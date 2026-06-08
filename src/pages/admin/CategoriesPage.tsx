@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Category } from '@/types';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -262,10 +263,13 @@ export default function CategoriesPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea id="description" rows={2} {...form.register('description')} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="image">Image URL</Label>
-              <Input id="image" placeholder="https://..." {...form.register('image')} />
-            </div>
+            <Controller
+              control={form.control}
+              name="image"
+              render={({ field }) => (
+                <ImageUpload value={field.value ?? ''} onChange={field.onChange} label="Category Image" />
+              )}
+            />
             <div className="space-y-2">
               <Label>Parent Category (optional — leave empty for top-level)</Label>
               <Controller

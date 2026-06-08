@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
+import { getProductImage } from '@/lib/images';
 import type { Product } from '@/types';
 
 interface ProductCardProps {
@@ -20,7 +21,7 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link to={`/products/${product._id}`}>
         <div className="relative aspect-[3/4] overflow-hidden bg-muted">
           <img
-            src={product.images[0] || 'https://via.placeholder.com/400'}
+            src={getProductImage(product.images[0])}
             alt={product.name}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

@@ -57,7 +57,7 @@ export function AdminLayout() {
             <Link to="/"><Store className="h-4 w-4 mr-2" />View Store</Link>
           </Button>
           <div className="text-xs text-muted-foreground px-1">{user?.email}</div>
-          <Button variant="ghost" size="sm" className="w-full text-destructive" onClick={logout}>
+          <Button variant="ghost" size="sm" className="w-full text-destructive" onClick={() => logout()}>
             <LogOut className="h-4 w-4 mr-2" />Logout
           </Button>
         </div>

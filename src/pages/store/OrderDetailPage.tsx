@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, MapPin, CreditCard, Package } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate, formatPrice } from '@/lib/utils';
+import { getProductImage } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -100,7 +101,7 @@ export default function OrderDetailPage() {
               {order.items.map((item, index) => (
                 <div key={index} className="flex gap-4">
                   <img
-                    src={item.image || 'https://via.placeholder.com/80'}
+                    src={getProductImage(item.image)}
                     alt={item.name}
                     className="w-20 h-20 rounded-md object-cover bg-muted shrink-0"
                   />

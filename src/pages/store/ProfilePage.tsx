@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,8 @@ import {
   Plus,
   Pencil,
   Trash2,
+  LogOut,
+  Shield,
   Loader2,
 } from 'lucide-react';
 import api from '@/lib/api';
@@ -69,7 +71,8 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-  const { setAuth } = useAuthStore();
+  const { setAuth, accessToken, logout } = useAuthStore();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: user, isLoading: userLoading, isError: userError } = useQuery({
@@ -105,8 +108,7 @@ export default function ProfilePage() {
       return response.data.user;
     },
     onSuccess: (updatedUser) => {
-      const token = localStorage.getItem('token') || '';
-      setAuth(updatedUser, token);
+      if (accessToken) setAuth(updatedUser, accessToken);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Profile updated');
     },
@@ -125,8 +127,7 @@ export default function ProfilePage() {
       return response.data.user;
     },
     onSuccess: (updatedUser) => {
-      const token = localStorage.getItem('token') || '';
-      setAuth(updatedUser, token);
+      if (accessToken) setAuth(updatedUser, accessToken);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       setAddressDialogOpen(false);
       setEditingAddress(null);
@@ -144,8 +145,7 @@ export default function ProfilePage() {
       return response.data.user;
     },
     onSuccess: (updatedUser) => {
-      const token = localStorage.getItem('token') || '';
-      setAuth(updatedUser, token);
+      if (accessToken) setAuth(updatedUser, accessToken);
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Address deleted');
     },
@@ -248,6 +248,38 @@ export default function ProfilePage() {
                   )}
                 </Button>
               </form>
+
+              <div className="mt-8 pt-6 border-t max-w-md">
+                <h3 className="font-medium flex items-center gap-2 mb-4">
+                  <Shield className="h-4 w-4" />
+                  Account Security
+                </h3>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={async () => {
+                      await logout();
+                      navigate('/');
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={async () => {
+                      await logout(true);
+                      navigate('/login');
+                    }}
+                  >
+                    Sign Out All Devices
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 

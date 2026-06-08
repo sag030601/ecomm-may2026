@@ -1,12 +1,14 @@
-import { Link } from 'react-router-dom';
-import { ShoppingBag, ShoppingCart, User, Search, Menu } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingBag, ShoppingCart, Search, Menu, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
+import { UserMenu } from '@/components/auth/UserMenu';
 import { useState } from 'react';
 
 export function Navbar() {
+  const navigate = useNavigate();
   const itemCount = useCartStore((s) => s.getItemCount());
   const { user, logout, isAdmin } = useAuthStore();
   const [search, setSearch] = useState('');
@@ -48,15 +50,11 @@ export function Navbar() {
 
           <div className="flex items-center gap-2">
             {isAdmin() && (
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex">
                 <Link to="/admin">Admin</Link>
               </Button>
             )}
-            <Button variant="ghost" size="icon" asChild>
-              <Link to={user ? '/profile' : '/login'}>
-                <User className="h-5 w-5" />
-              </Link>
-            </Button>
+            <UserMenu />
             <Button variant="ghost" size="icon" className="relative" asChild>
               <Link to="/cart">
                 <ShoppingCart className="h-5 w-5" />
@@ -81,11 +79,18 @@ export function Navbar() {
             <Link to="/products" className="block py-2" onClick={() => setMobileOpen(false)}>Shop</Link>
             {user ? (
               <>
-                <Link to="/profile" className="block py-2" onClick={() => setMobileOpen(false)}>Profile</Link>
-                <button onClick={() => { logout(); setMobileOpen(false); }} className="block py-2 text-destructive">Logout</button>
+                <Link to="/profile" className="block py-2" onClick={() => setMobileOpen(false)}>My Account</Link>
+                <button
+                  type="button"
+                  onClick={async () => { await logout(); setMobileOpen(false); navigate('/'); }}
+                  className="flex items-center gap-2 py-2 text-destructive w-full text-left"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </button>
               </>
             ) : (
-              <Link to="/login" className="block py-2" onClick={() => setMobileOpen(false)}>Login</Link>
+              <Link to="/login" className="block py-2 font-medium" onClick={() => setMobileOpen(false)}>Sign In</Link>
             )}
           </div>
         )}

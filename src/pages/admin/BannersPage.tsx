@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { Banner } from '@/types';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 
 const bannerSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -242,13 +243,16 @@ export default function BannersPage() {
               <Label htmlFor="subtitle">Subtitle</Label>
               <Input id="subtitle" {...form.register('subtitle')} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="image">Image URL</Label>
-              <Input id="image" placeholder="https://..." {...form.register('image')} />
-              {form.formState.errors.image && (
-                <p className="text-xs text-destructive">{form.formState.errors.image.message}</p>
+            <Controller
+              control={form.control}
+              name="image"
+              render={({ field }) => (
+                <ImageUpload value={field.value} onChange={field.onChange} label="Banner Image" />
               )}
-            </div>
+            />
+            {form.formState.errors.image && (
+              <p className="text-xs text-destructive">{form.formState.errors.image.message}</p>
+            )}
             <div className="space-y-2">
               <Label htmlFor="link">Link (optional)</Label>
               <Input id="link" placeholder="/products" {...form.register('link')} />
@@ -261,13 +265,6 @@ export default function BannersPage() {
               <input type="checkbox" className="rounded" {...form.register('isActive')} />
               Active
             </label>
-            {form.watch('image') && (
-              <img
-                src={form.watch('image')}
-                alt="Preview"
-                className="w-full h-32 object-cover rounded-md border"
-              />
-            )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={closeDialog}>
                 Cancel

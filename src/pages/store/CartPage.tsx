@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/lib/utils';
+import { getProductImage } from '@/lib/images';
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, getSubtotal } = useCartStore();
@@ -34,7 +35,7 @@ export default function CartPage() {
               <div key={key} className="flex gap-4 border rounded-lg p-4">
                 <Link to={`/products/${item.productId}`} className="shrink-0">
                   <img
-                    src={item.image || 'https://via.placeholder.com/120'}
+                    src={getProductImage(item.image)}
                     alt={item.name}
                     className="w-24 h-24 md:w-28 md:h-28 object-cover rounded-md bg-muted"
                   />

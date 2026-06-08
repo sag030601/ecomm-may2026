@@ -4,6 +4,8 @@ import { Toaster } from 'sonner';
 import { StoreLayout } from '@/components/layout/StoreLayout';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { AuthInitializer } from '@/components/auth/AuthInitializer';
+import AuthCallbackPage from '@/pages/store/AuthCallbackPage';
 
 import HomePage from '@/pages/store/HomePage';
 import ProductsPage from '@/pages/store/ProductsPage';
@@ -39,7 +41,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
+        <AuthInitializer>
+          <Routes>
           <Route element={<StoreLayout />}>
             <Route index element={<HomePage />} />
             <Route path="products" element={<ProductsPage />} />
@@ -50,6 +53,7 @@ function App() {
             } />
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
+            <Route path="auth/callback" element={<AuthCallbackPage />} />
             <Route path="profile" element={
               <ProtectedRoute><ProfilePage /></ProtectedRoute>
             } />
@@ -72,7 +76,8 @@ function App() {
             <Route path="banners" element={<AdminBannersPage />} />
             <Route path="reviews" element={<AdminReviewsPage />} />
           </Route>
-        </Routes>
+          </Routes>
+        </AuthInitializer>
       </BrowserRouter>
       <Toaster position="top-right" richColors />
     </QueryClientProvider>

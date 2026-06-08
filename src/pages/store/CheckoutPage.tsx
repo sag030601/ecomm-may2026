@@ -6,9 +6,10 @@ import { z } from 'zod';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
-import { CreditCard, Banknote, Tag, Loader2 } from 'lucide-react';
+import { CreditCard, Banknote, Tag, Loader2, Sparkles } from 'lucide-react';
 import api from '@/lib/api';
 import { cn, formatPrice } from '@/lib/utils';
+import { getProductImage } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -82,6 +83,50 @@ function StripePaymentForm({
   );
 }
 
+function DemoPaymentForm({
+  orderId,
+  total,
+  onSuccess,
+}: {
+  orderId: string;
+  total: number;
+  onSuccess: () => void;
+}) {
+  const [processing, setProcessing] = useState(false);
+
+  const handleDemoPay = async () => {
+    setProcessing(true);
+    try {
+      await api.post(`/orders/${orderId}/demo-payment`);
+      onSuccess();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Demo payment failed');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 mt-6">
+      <div className="rounded-lg border border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 font-medium text-foreground mb-1">
+          <Sparkles className="h-4 w-4" />
+          Demo Stripe Payment
+        </div>
+        Stripe is not configured, so this simulates a successful card payment without charging a real card.
+      </div>
+      <Button type="button" className="w-full" size="lg" onClick={handleDemoPay} disabled={processing}>
+        {processing ? (
+          <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
+        ) : (
+          `Simulate Payment Success — ${formatPrice(total)}`
+        )}
+      </Button>
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { items, getSubtotal, clearCart } = useCartStore();
@@ -95,6 +140,7 @@ export default function CheckoutPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const {
@@ -138,7 +184,7 @@ export default function CheckoutPage() {
     setSubmitting(true);
     try {
       const { notes, ...shippingAddress } = formData;
-      const { data } = await api.post<{ order: Order; clientSecret?: string }>('/orders', {
+      const { data } = await api.post<{ order: Order; clientSecret?: string; demoMode?: boolean }>('/orders', {
         items: items.map((item) => ({
           product: item.productId,
           size: item.size,
@@ -151,7 +197,11 @@ export default function CheckoutPage() {
         notes,
       });
 
-      if (paymentMethod === 'stripe' && data.clientSecret) {
+      if (paymentMethod === 'stripe' && data.demoMode) {
+        setDemoMode(true);
+        setPendingOrderId(data.order._id);
+        toast.success('Order created. Complete demo payment below.');
+      } else if (paymentMethod === 'stripe' && data.clientSecret) {
         setClientSecret(data.clientSecret);
         setPendingOrderId(data.order._id);
         toast.success('Order created. Complete your payment below.');
@@ -174,7 +224,7 @@ export default function CheckoutPage() {
     navigate(`/orders/${pendingOrderId}`);
   };
 
-  if (items.length === 0 && !clientSecret) {
+  if (items.length === 0 && !clientSecret && !demoMode) {
     return (
       <div className="container-custom py-24 text-center">
         <h1 className="text-2xl font-bold mb-2">Nothing to checkout</h1>
@@ -190,7 +240,7 @@ export default function CheckoutPage() {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {!clientSecret ? (
+          {!clientSecret && !demoMode ? (
             <>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                 <section className="border rounded-lg p-6">
@@ -299,13 +349,25 @@ export default function CheckoutPage() {
                 </Button>
               </form>
             </>
+          ) : demoMode ? (
+            <section className="border rounded-lg p-6">
+              <h2 className="font-semibold text-lg mb-2">Complete Payment</h2>
+              <p className="text-muted-foreground text-sm mb-4">
+                Total: {formatPrice(total)}
+              </p>
+              <DemoPaymentForm
+                orderId={pendingOrderId!}
+                total={total}
+                onSuccess={handlePaymentSuccess}
+              />
+            </section>
           ) : (
             <section className="border rounded-lg p-6">
               <h2 className="font-semibold text-lg mb-2">Complete Payment</h2>
               <p className="text-muted-foreground text-sm mb-4">
                 Total: {formatPrice(total)}
               </p>
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <Elements stripe={stripePromise} options={{ clientSecret: clientSecret! }}>
                 <StripePaymentForm orderId={pendingOrderId!} onSuccess={handlePaymentSuccess} />
               </Elements>
             </section>
@@ -319,7 +381,7 @@ export default function CheckoutPage() {
               {items.map((item) => (
                 <div key={`${item.productId}-${item.size}-${item.color}`} className="flex gap-3 text-sm">
                   <img
-                    src={item.image}
+                    src={getProductImage(item.image)}
                     alt={item.name}
                     className="w-14 h-14 rounded object-cover bg-muted shrink-0"
                   />

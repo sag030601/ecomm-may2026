@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MultiImageUpload } from '@/components/admin/ImageUpload';
 import type { Category, Product } from '@/types';
 
 const productFormSchema = z.object({
@@ -423,8 +424,14 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="images">Image URLs (one per line)</Label>
-                <Textarea id="images" rows={3} placeholder="https://..." {...form.register('images')} />
+                <Label>Product Images</Label>
+                <Controller
+                  control={form.control}
+                  name="images"
+                  render={({ field }) => (
+                    <MultiImageUpload value={field.value} onChange={field.onChange} />
+                  )}
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="colors">Colors (comma separated)</Label>

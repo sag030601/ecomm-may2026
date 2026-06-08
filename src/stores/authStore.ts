@@ -1,12 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
+import api from '@/lib/api';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
-  setAuth: (user: User, token: string) => void;
-  logout: () => void;
+  accessToken: string | null;
+  refreshToken: string | null;
+  setAuth: (user: User, accessToken: string, refreshToken?: string) => void;
+  clearAuth: () => void;
+  logout: (allDevices?: boolean) => Promise<void>;
+  refreshSession: () => Promise<boolean>;
   isAdmin: () => boolean;
   isAuthenticated: () => boolean;
 }
@@ -15,23 +19,54 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
+      accessToken: null,
+      refreshToken: null,
 
-      setAuth: (user, token) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        set({ user, token });
+      setAuth: (user, accessToken, refreshToken) => {
+        set({ user, accessToken, refreshToken: refreshToken ?? get().refreshToken });
       },
 
-      logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        set({ user: null, token: null });
+      clearAuth: () => {
+        set({ user: null, accessToken: null, refreshToken: null });
+      },
+
+      logout: async (allDevices = false) => {
+        try {
+          if (allDevices) {
+            await api.post('/auth/logout-all');
+          } else {
+            await api.post('/auth/logout');
+          }
+        } catch {
+          // Clear local state even if API call fails
+        } finally {
+          get().clearAuth();
+        }
+      },
+
+      refreshSession: async () => {
+        try {
+          const { data } = await api.post<{ accessToken: string; refreshToken?: string; user: User }>(
+            '/auth/refresh'
+          );
+          get().setAuth(data.user, data.accessToken, data.refreshToken);
+          return true;
+        } catch {
+          get().clearAuth();
+          return false;
+        }
       },
 
       isAdmin: () => get().user?.role === 'admin',
-      isAuthenticated: () => !!get().token,
+      isAuthenticated: () => !!get().accessToken,
     }),
-    { name: 'auth-storage' }
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({
+        user: state.user,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
+    }
   )
 );

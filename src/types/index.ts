@@ -7,6 +7,17 @@ export interface User {
   phone?: string;
   addresses: Address[];
   avatar?: string;
+  emailVerified?: boolean;
+  oauthAccounts?: Array<{ provider: string; email: string; linkedAt: string }>;
+}
+
+export interface AuthSession {
+  id: string;
+  deviceName: string;
+  ipAddress: string;
+  lastUsedAt: string;
+  createdAt: string;
+  expiresAt: string;
 }
 
 export interface Address {

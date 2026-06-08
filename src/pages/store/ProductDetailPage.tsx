@@ -8,6 +8,7 @@ import { Star, Minus, Plus, ShoppingCart, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { cn, formatDate, formatPrice } from '@/lib/utils';
+import { getProductImage } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -184,7 +185,7 @@ export default function ProductDetailPage() {
         <div className="space-y-4">
           <div className="aspect-square overflow-hidden rounded-lg bg-muted">
             <img
-              src={product.images[selectedImage] || 'https://via.placeholder.com/600'}
+              src={getProductImage(product.images[selectedImage])}
               alt={product.name}
               className="h-full w-full object-cover"
             />
