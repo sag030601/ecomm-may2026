@@ -1,4 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
+import { saveIntendedRoute } from '@/lib/intendedRoute';
 import { useAuthStore } from '@/stores/authStore';
 
 const api = axios.create({
@@ -31,7 +32,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
         originalRequest.url?.includes('/auth/register') ||
-        originalRequest.url?.includes('/auth/refresh');
+        originalRequest.url?.includes('/auth/refresh') ||
+        originalRequest.url?.includes('/auth/oauth/exchange');
 
       if (isAuthEndpoint) {
         return Promise.reject(error);
@@ -54,9 +56,10 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const storedRefreshToken = useAuthStore.getState().refreshToken;
         const { data } = await axios.post(
           `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
-          {},
+          storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
           { withCredentials: true }
         );
         const { accessToken, user } = data;
@@ -68,6 +71,9 @@ api.interceptors.response.use(
         processQueue(null);
         useAuthStore.getState().clearAuth();
         if (!window.location.pathname.includes('/login')) {
+          saveIntendedRoute(
+            `${window.location.pathname}${window.location.search}${window.location.hash}`
+          );
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -84,8 +90,12 @@ export default api;
 
 export const getApiBaseUrl = () => import.meta.env.VITE_API_URL || '/api';
 
-export const getOAuthUrl = (provider: string) => {
+export const getOAuthUrl = (provider: string, clientRedirect?: string) => {
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   const base = apiUrl.replace(/\/api\/?$/, '');
-  return `${base}/api/auth/oauth/${provider}`;
+  const url = new URL(`${base}/api/auth/oauth/${provider}`);
+  if (clientRedirect) {
+    url.searchParams.set('redirect', clientRedirect);
+  }
+  return url.toString();
 };

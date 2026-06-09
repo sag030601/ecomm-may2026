@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
+import { completePostAuthFlow } from '@/lib/authFlow';
+import { resolveLoginReturnPath } from '@/lib/intendedRoute';
 import { useAuthStore } from '@/stores/authStore';
 import type { User } from '@/types';
 
@@ -30,8 +33,14 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [loading, setLoading] = useState(false);
+
+  const returnPath = resolveLoginReturnPath(
+    location.state as { from?: { pathname: string; search?: string; hash?: string } } | null
+  );
 
   const {
     register,
@@ -51,7 +60,12 @@ export default function RegisterPage() {
       );
       setAuth(response.data.user, response.data.accessToken, response.data.refreshToken);
       toast.success('Account created successfully!');
-      navigate('/');
+      await completePostAuthFlow({
+        navigate,
+        user: response.data.user,
+        redirectParam: returnPath,
+        queryClient,
+      });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Registration failed');
@@ -88,7 +102,7 @@ export default function RegisterPage() {
           </CardHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-4 px-0 lg:px-6">
-              <OAuthButtons />
+              <OAuthButtons redirectTo={returnPath} />
 
               <div>
                 <Label htmlFor="name">Full Name</Label>

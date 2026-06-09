@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { stripePromise } from '@/lib/stripe';
 import { toast } from 'sonner';
 import { CreditCard, Banknote, Tag, Loader2, Sparkles } from 'lucide-react';
 import api from '@/lib/api';
@@ -16,9 +16,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/stores/cartStore';
+import { flowLog } from '@/lib/flowLogger';
+import { waitForStoreHydration } from '@/lib/storeHydration';
 import type { Order } from '@/types';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 const shippingSchema = z.object({
   street: z.string().min(1, 'Street address is required'),
@@ -129,10 +129,11 @@ function DemoPaymentForm({
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, getSubtotal, clearCart } = useCartStore();
+  const { items, getSubtotal, clearCart, validateAndSync } = useCartStore();
   const subtotal = getSubtotal();
   const shippingCost = subtotal >= 100 ? 0 : 9.99;
 
+  const [cartReady, setCartReady] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'cod'>('stripe');
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
@@ -153,6 +154,20 @@ export default function CheckoutPage() {
   });
 
   const total = Math.max(0, subtotal - discount + shippingCost);
+
+  useEffect(() => {
+    const prepareCheckout = async () => {
+      await waitForStoreHydration();
+      const result = await validateAndSync();
+      if (result.removed.length > 0) {
+        toast.warning(
+          `${result.removed.length} item(s) removed — no longer available for checkout.`
+        );
+      }
+      setCartReady(true);
+    };
+    prepareCheckout();
+  }, [validateAndSync]);
 
   const handleValidateCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -183,9 +198,17 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     try {
+      const syncResult = await validateAndSync();
+      const checkoutItems = syncResult.after;
+      if (checkoutItems.length === 0) {
+        toast.error('Your cart is empty or items are no longer available');
+        setSubmitting(false);
+        return;
+      }
+
       const { notes, ...shippingAddress } = formData;
-      const { data } = await api.post<{ order: Order; clientSecret?: string; demoMode?: boolean }>('/orders', {
-        items: items.map((item) => ({
+      const payload = {
+        items: checkoutItems.map((item) => ({
           product: item.productId,
           size: item.size,
           color: item.color,
@@ -195,7 +218,13 @@ export default function CheckoutPage() {
         paymentMethod,
         couponCode: couponApplied || undefined,
         notes,
-      });
+      };
+      flowLog('checkout-payload', payload);
+
+      const { data } = await api.post<{ order: Order; clientSecret?: string; demoMode?: boolean }>(
+        '/orders',
+        payload
+      );
 
       if (paymentMethod === 'stripe' && data.demoMode) {
         setDemoMode(true);
@@ -212,7 +241,11 @@ export default function CheckoutPage() {
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to place order');
+      const message = err.response?.data?.message || 'Failed to place order';
+      toast.error(message);
+      if (message.toLowerCase().includes('not found') || message.toLowerCase().includes('stock')) {
+        await validateAndSync();
+      }
     } finally {
       setSubmitting(false);
     }
@@ -223,6 +256,15 @@ export default function CheckoutPage() {
     toast.success('Payment successful!');
     navigate(`/orders/${pendingOrderId}`);
   };
+
+  if (!cartReady) {
+    return (
+      <div className="container-custom py-24 flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Preparing checkout...</p>
+      </div>
+    );
+  }
 
   if (items.length === 0 && !clientSecret && !demoMode) {
     return (
@@ -367,9 +409,15 @@ export default function CheckoutPage() {
               <p className="text-muted-foreground text-sm mb-4">
                 Total: {formatPrice(total)}
               </p>
-              <Elements stripe={stripePromise} options={{ clientSecret: clientSecret! }}>
-                <StripePaymentForm orderId={pendingOrderId!} onSuccess={handlePaymentSuccess} />
-              </Elements>
+              {stripePromise ? (
+                <Elements stripe={stripePromise} options={{ clientSecret: clientSecret! }}>
+                  <StripePaymentForm orderId={pendingOrderId!} onSuccess={handlePaymentSuccess} />
+                </Elements>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Stripe is not configured. Use demo payment or add VITE_STRIPE_PUBLISHABLE_KEY.
+                </p>
+              )}
             </section>
           )}
         </div>

@@ -1,6 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import api from '@/lib/api';
+import { flowLog } from '@/lib/flowLogger';
 import type { CartItem } from '@/types';
+
+interface CartValidationRemoved {
+  productId: string;
+  size: string;
+  color?: string;
+  reason: string;
+}
+
+interface CartSyncResult {
+  before: CartItem[];
+  after: CartItem[];
+  removed: CartValidationRemoved[];
+  updated: string[];
+}
 
 interface CartState {
   items: CartItem[];
@@ -10,10 +26,32 @@ interface CartState {
   clearCart: () => void;
   getSubtotal: () => number;
   getItemCount: () => number;
+  validateAndSync: () => Promise<CartSyncResult>;
 }
 
 const itemKey = (productId: string, size: string, color?: string) =>
   `${productId}-${size}-${color || 'default'}`;
+
+const mergeValidatedItems = (items: CartItem[]): CartItem[] => {
+  const merged = new Map<string, CartItem>();
+  for (const item of items) {
+    const key = itemKey(item.productId, item.size, item.color);
+    const existing = merged.get(key);
+    if (existing) {
+      merged.set(key, {
+        ...existing,
+        quantity: Math.min(existing.quantity + item.quantity, item.maxStock),
+        price: item.price,
+        maxStock: item.maxStock,
+        name: item.name,
+        image: item.image,
+      });
+    } else {
+      merged.set(key, item);
+    }
+  }
+  return Array.from(merged.values());
+};
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -31,7 +69,7 @@ export const useCartStore = create<CartState>()(
             return {
               items: state.items.map((i) =>
                 itemKey(i.productId, i.size, i.color) === key
-                  ? { ...i, quantity: newQty }
+                  ? { ...i, quantity: newQty, maxStock: item.maxStock, price: item.price }
                   : i
               ),
             };
@@ -69,6 +107,41 @@ export const useCartStore = create<CartState>()(
       getSubtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
 
       getItemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
+
+      validateAndSync: async () => {
+        const before = get().items;
+        if (before.length === 0) {
+          return { before, after: [], removed: [], updated: [] };
+        }
+
+        try {
+          const { data } = await api.post<{
+            items: CartItem[];
+            removed: CartValidationRemoved[];
+            updated: string[];
+          }>('/products/validate-cart', {
+            items: before.map((i) => ({
+              productId: i.productId,
+              size: i.size,
+              color: i.color,
+              quantity: i.quantity,
+            })),
+          });
+
+          const after = mergeValidatedItems(data.items);
+          set({ items: after });
+
+          const result = { before, after, removed: data.removed, updated: data.updated };
+          flowLog('cart-merge-result', {
+            beforeCount: before.length,
+            afterCount: after.length,
+            removedCount: data.removed.length,
+          });
+          return result;
+        } catch {
+          return { before, after: before, removed: [], updated: [] };
+        }
+      },
     }),
     { name: 'cart-storage' }
   )

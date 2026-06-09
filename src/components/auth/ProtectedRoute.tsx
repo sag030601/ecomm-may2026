@@ -1,4 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import { saveIntendedRoute } from '@/lib/intendedRoute';
+import { flowLog } from '@/lib/flowLogger';
 import { useAuthStore } from '@/stores/authStore';
 
 interface ProtectedRouteProps {
@@ -11,6 +13,8 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
   const location = useLocation();
 
   if (!isAuthenticated()) {
+    saveIntendedRoute(location);
+    flowLog('pre-login-route', { intended: `${location.pathname}${location.search}` });
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

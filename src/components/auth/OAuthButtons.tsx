@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import api, { getOAuthUrl } from '@/lib/api';
+import { saveIntendedRoute } from '@/lib/intendedRoute';
+import { flowLog } from '@/lib/flowLogger';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -59,9 +61,11 @@ function MicrosoftIcon({ className }: { className?: string }) {
 interface OAuthButtonsProps {
   className?: string;
   showDivider?: boolean;
+  /** Post-login in-app path, e.g. `/checkout` */
+  redirectTo?: string;
 }
 
-export function OAuthButtons({ className, showDivider = true }: OAuthButtonsProps) {
+export function OAuthButtons({ className, showDivider = true, redirectTo }: OAuthButtonsProps) {
   const [config, setConfig] = useState<OAuthConfig>({ google: false, github: false, microsoft: false });
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -93,8 +97,15 @@ export function OAuthButtons({ className, showDivider = true }: OAuthButtonsProp
       return;
     }
 
+    const returnPath =
+      redirectTo ||
+      `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    saveIntendedRoute(returnPath);
+    flowLog('pre-login-route', { oauth: provider, returnPath });
+    flowLog('cart-before-login', { note: 'guest cart preserved in localStorage' });
+
     setLoading(provider);
-    window.location.href = getOAuthUrl(provider);
+    window.location.href = getOAuthUrl(provider, returnPath);
   };
 
   return (

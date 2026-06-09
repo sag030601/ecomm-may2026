@@ -2,9 +2,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2, ShoppingBag } from 'lucide-react';
 import api from '@/lib/api';
+import { completePostAuthFlow } from '@/lib/authFlow';
+import { resolveLoginReturnPath } from '@/lib/intendedRoute';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,10 +27,13 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [loading, setLoading] = useState(false);
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  const returnPath = resolveLoginReturnPath(
+    location.state as { from?: { pathname: string; search?: string; hash?: string } } | null
+  );
 
   const {
     register,
@@ -37,14 +43,15 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const handleAuthSuccess = (user: User, accessToken: string, refreshToken?: string) => {
+  const handleAuthSuccess = async (user: User, accessToken: string, refreshToken?: string) => {
     setAuth(user, accessToken, refreshToken);
     toast.success('Welcome back!');
-    if (user.role === 'admin') {
-      navigate('/admin');
-    } else {
-      navigate(from, { replace: true });
-    }
+    await completePostAuthFlow({
+      navigate,
+      user,
+      redirectParam: returnPath,
+      queryClient,
+    });
   };
 
   const onSubmit = async (data: LoginFormData) => {
@@ -55,7 +62,7 @@ export default function LoginPage() {
         refreshToken?: string;
         user: User;
       }>('/auth/login', data);
-      handleAuthSuccess(response.data.user, response.data.accessToken, response.data.refreshToken);
+      await handleAuthSuccess(response.data.user, response.data.accessToken, response.data.refreshToken);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || 'Invalid email or password');
@@ -92,7 +99,7 @@ export default function LoginPage() {
           </CardHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-4 px-0 lg:px-6">
-              <OAuthButtons />
+              <OAuthButtons redirectTo={returnPath} />
 
               <div>
                 <Label htmlFor="email">Email address</Label>

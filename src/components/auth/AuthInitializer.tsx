@@ -1,17 +1,29 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { waitForStoreHydration } from '@/lib/storeHydration';
+import { flowLog } from '@/lib/flowLogger';
 import api from '@/lib/api';
 
 export function AuthInitializer({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const location = useLocation();
   const { accessToken, setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
     const bootstrap = async () => {
+      await waitForStoreHydration();
+
+      if (location.pathname === '/auth/callback') {
+        setReady(true);
+        return;
+      }
+
       try {
         if (accessToken) {
           const { data } = await api.get('/auth/me');
           setAuth(data.user, accessToken);
+          flowLog('auth-state-change', { event: 'session-restored', userId: data.user.id });
         } else {
           const refreshed = await useAuthStore.getState().refreshSession();
           if (!refreshed) clearAuth();

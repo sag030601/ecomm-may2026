@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 import api from '@/lib/api';
+import { flowLog } from '@/lib/flowLogger';
 
 interface AuthState {
   user: User | null;
@@ -24,10 +25,12 @@ export const useAuthStore = create<AuthState>()(
 
       setAuth: (user, accessToken, refreshToken) => {
         set({ user, accessToken, refreshToken: refreshToken ?? get().refreshToken });
+        flowLog('auth-state-change', { event: 'set-auth', userId: user.id });
       },
 
       clearAuth: () => {
         set({ user: null, accessToken: null, refreshToken: null });
+        flowLog('auth-state-change', { event: 'clear-auth' });
       },
 
       logout: async (allDevices = false) => {
@@ -46,8 +49,10 @@ export const useAuthStore = create<AuthState>()(
 
       refreshSession: async () => {
         try {
+          const refreshToken = get().refreshToken;
           const { data } = await api.post<{ accessToken: string; refreshToken?: string; user: User }>(
-            '/auth/refresh'
+            '/auth/refresh',
+            refreshToken ? { refreshToken } : {}
           );
           get().setAuth(data.user, data.accessToken, data.refreshToken);
           return true;

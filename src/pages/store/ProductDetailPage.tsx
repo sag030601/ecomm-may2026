@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +31,7 @@ type ReviewFormData = z.infer<typeof reviewSchema>;
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const addItem = useCartStore((s) => s.addItem);
   const { isAuthenticated } = useAuthStore();
   const queryClient = useQueryClient();
@@ -47,7 +48,8 @@ export default function ProductDetailPage() {
       const { data } = await api.get<{ product: Product }>(`/products/${id}`);
       return data.product;
     },
-    enabled: !!id,
+    enabled: !!id && /^[a-f\d]{24}$/i.test(id),
+    retry: 1,
   });
 
   const { data: relatedProducts } = useQuery({
@@ -149,6 +151,16 @@ export default function ProductDetailPage() {
     );
   }
 
+  if (!id || !/^[a-f\d]{24}$/i.test(id)) {
+    return (
+      <div className="container-custom py-24 text-center">
+        <h1 className="text-2xl font-bold mb-2">Invalid Product</h1>
+        <p className="text-muted-foreground mb-6">The product link is malformed.</p>
+        <Button asChild><Link to="/products">Browse Products</Link></Button>
+      </div>
+    );
+  }
+
   if (isError || !product) {
     return (
       <div className="container-custom py-24 text-center">
@@ -202,7 +214,7 @@ export default function ProductDetailPage() {
                     selectedImage === index ? 'border-primary' : 'border-transparent'
                   )}
                 >
-                  <img src={img} alt="" className="h-full w-full object-cover" />
+                  <img src={getProductImage(img)} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
@@ -389,7 +401,7 @@ export default function ProductDetailPage() {
 
         {!isAuthenticated() && (
           <p className="text-muted-foreground mb-6">
-            <Link to="/login" className="text-primary underline">Sign in</Link> to write a review.
+            <Link to="/login" state={{ from: location }} className="text-primary underline">Sign in</Link> to write a review.
           </p>
         )}
 
