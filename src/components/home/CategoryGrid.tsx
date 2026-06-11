@@ -2,45 +2,16 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { CATEGORY_IMAGES, getCategoryImage, onImageError } from '@/lib/images';
 import type { Category } from '@/types';
 
 const CURATED_CATEGORIES = [
-  {
-    name: 'Fashion',
-    slug: 'fashion',
-    image: 'https://images.unsplash.com/photo-1483985988355-763728e3685b?w=800&q=80',
-    link: '/products',
-  },
-  {
-    name: 'Accessories',
-    slug: 'accessories',
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80',
-    link: '/products',
-  },
-  {
-    name: 'Footwear',
-    slug: 'footwear',
-    image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&q=80',
-    link: '/products',
-  },
-  {
-    name: 'Lifestyle',
-    slug: 'lifestyle',
-    image: 'https://images.unsplash.com/photo-1441984904996-e0b6a68737d2?w=800&q=80',
-    link: '/products?featured=true',
-  },
-  {
-    name: 'Electronics',
-    slug: 'electronics',
-    image: 'https://images.unsplash.com/photo-1498049794561-7780f723ebb1?w=800&q=80',
-    link: '/products',
-  },
-  {
-    name: 'Home',
-    slug: 'home',
-    image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80',
-    link: '/products',
-  },
+  { name: 'Fashion', slug: 'fashion', link: '/products' },
+  { name: 'Accessories', slug: 'accessories', link: '/products' },
+  { name: 'Footwear', slug: 'footwear', link: '/products' },
+  { name: 'Lifestyle', slug: 'lifestyle', link: '/products?featured=true' },
+  { name: 'Electronics', slug: 'electronics', link: '/products' },
+  { name: 'Home', slug: 'home', link: '/products' },
 ] as const;
 
 interface CategoryGridProps {
@@ -53,10 +24,16 @@ export function CategoryGrid({ categories, isLoading }: CategoryGridProps) {
     categories && categories.length > 0
       ? categories.slice(0, 6).map((c) => ({
           name: c.name,
-          image: c.image || CURATED_CATEGORIES[0].image,
+          slug: c.slug,
+          image: getCategoryImage(c.slug, c.image),
           link: `/products?category=${c._id}`,
         }))
-      : CURATED_CATEGORIES.map((c) => ({ name: c.name, image: c.image, link: c.link }));
+      : CURATED_CATEGORIES.map((c) => ({
+          name: c.name,
+          slug: c.slug,
+          image: getCategoryImage(c.slug),
+          link: c.link,
+        }));
 
   return (
     <section className="py-14 md:py-20" aria-labelledby="categories-heading">
@@ -88,7 +65,7 @@ export function CategoryGrid({ categories, isLoading }: CategoryGridProps) {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
             {items.map((cat, index) => (
               <Link
-                key={cat.name}
+                key={cat.slug}
                 to={cat.link}
                 className={cn(
                   'group relative aspect-[3/4] overflow-hidden rounded-2xl bg-muted',
@@ -98,9 +75,10 @@ export function CategoryGrid({ categories, isLoading }: CategoryGridProps) {
                 <img
                   src={cat.image}
                   alt={cat.name}
-                  loading="lazy"
+                  loading={index < 2 ? 'eager' : 'lazy'}
                   decoding="async"
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  onError={onImageError(CATEGORY_IMAGES.fashion)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 flex items-end justify-between">

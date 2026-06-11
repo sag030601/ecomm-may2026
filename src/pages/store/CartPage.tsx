@@ -1,14 +1,36 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/lib/utils';
 import { getProductImage } from '@/lib/images';
+import { waitForStoreHydration } from '@/lib/storeHydration';
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, getSubtotal } = useCartStore();
+  const { items, updateQuantity, removeItem, getSubtotal, validateAndSync } = useCartStore();
+  const [ready, setReady] = useState(false);
   const subtotal = getSubtotal();
+  const shippingCost = subtotal >= 100 ? 0 : 9.99;
+
+  useEffect(() => {
+    const init = async () => {
+      await waitForStoreHydration();
+      await validateAndSync();
+      setReady(true);
+    };
+    init();
+  }, [validateAndSync]);
+
+  if (!ready) {
+    return (
+      <div className="container-custom py-24 flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading your cart...</p>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -48,7 +70,7 @@ export default function CartPage() {
                     Size: {item.size}
                     {item.color && ` · Color: ${item.color}`}
                   </p>
-                  <p className="font-semibold mt-2">{formatPrice(item.price)}</p>
+                  <p className="font-semibold mt-2">{formatPrice(Number(item.price))}</p>
 
                   <div className="flex items-center justify-between mt-4">
                     <div className="flex items-center gap-2">
@@ -74,17 +96,16 @@ export default function CartPage() {
                     </div>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive gap-1"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
                       onClick={() => removeItem(item.productId, item.size, item.color)}
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="hidden sm:inline">Remove</span>
                     </Button>
                   </div>
                 </div>
-                <div className="hidden sm:block text-right">
-                  <p className="font-semibold">{formatPrice(item.price * item.quantity)}</p>
+                <div className="text-right hidden sm:block">
+                  <p className="font-semibold">{formatPrice(Number(item.price) * item.quantity)}</p>
                 </div>
               </div>
             );
@@ -94,32 +115,28 @@ export default function CartPage() {
         <div className="lg:col-span-1">
           <div className="border rounded-lg p-6 sticky top-24">
             <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
-            <div className="space-y-3 text-sm">
+            <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Shipping</span>
-                <span>{subtotal >= 100 ? 'Free' : formatPrice(9.99)}</span>
+                <span>{shippingCost === 0 ? 'Free' : formatPrice(shippingCost)}</span>
               </div>
             </div>
             <Separator className="my-4" />
             <div className="flex justify-between font-semibold text-lg mb-6">
               <span>Total</span>
-              <span>{formatPrice(subtotal + (subtotal >= 100 ? 0 : 9.99))}</span>
+              <span>{formatPrice(subtotal + shippingCost)}</span>
             </div>
-            {subtotal < 100 && (
-              <p className="text-xs text-muted-foreground mb-4">
-                Add {formatPrice(100 - subtotal)} more for free shipping
-              </p>
-            )}
-            <Button className="w-full gap-2" size="lg" asChild>
+            <Button asChild className="w-full gap-2" size="lg">
               <Link to="/checkout">
-                Proceed to Checkout <ArrowRight className="h-4 w-4" />
+                Proceed to Checkout
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="outline" className="w-full mt-3" asChild>
+            <Button asChild variant="outline" className="w-full mt-3">
               <Link to="/products">Continue Shopping</Link>
             </Button>
           </div>

@@ -42,13 +42,15 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
 
-  const { data: product, isLoading, isError, refetch } = useQuery({
+  const isValidId = !!id && /^[a-f\d]{24}$/i.test(id);
+
+  const { data: product, isPending, isError, refetch } = useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
       const { data } = await api.get<{ product: Product }>(`/products/${id}`);
       return data.product;
     },
-    enabled: !!id && /^[a-f\d]{24}$/i.test(id),
+    enabled: isValidId,
     retry: 1,
   });
 
@@ -58,7 +60,7 @@ export default function ProductDetailPage() {
       const { data } = await api.get<{ products: Product[] }>(`/products/${id}/related`);
       return data.products;
     },
-    enabled: !!id,
+    enabled: isValidId,
   });
 
   const { data: reviews, isLoading: reviewsLoading } = useQuery({
@@ -67,7 +69,7 @@ export default function ProductDetailPage() {
       const { data } = await api.get<{ reviews: Review[] }>(`/reviews/product/${id}`);
       return data.reviews;
     },
-    enabled: !!id,
+    enabled: isValidId,
   });
 
   const {
@@ -98,23 +100,22 @@ export default function ProductDetailPage() {
     },
   });
 
-  const selectedSizeVariant = product?.sizes.find((s) => s.size === selectedSize);
-  const maxStock = selectedSizeVariant?.stock ?? 0;
-  const discount = product?.compareAtPrice
-    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
-    : 0;
-
   const handleAddToCart = () => {
     if (!product) return;
+    const sizes = product.sizes ?? [];
+    const colors = product.colors ?? [];
+    const sizeVariant = sizes.find((s) => s.size === selectedSize);
+    const stock = sizeVariant?.stock ?? 0;
+
     if (!selectedSize) {
       toast.error('Please select a size');
       return;
     }
-    if (product.colors.length > 0 && !selectedColor) {
+    if (colors.length > 0 && !selectedColor) {
       toast.error('Please select a color');
       return;
     }
-    if (maxStock <= 0) {
+    if (stock <= 0) {
       toast.error('Selected size is out of stock');
       return;
     }
@@ -123,11 +124,11 @@ export default function ProductDetailPage() {
       productId: product._id,
       name: product.name,
       image: product.images[0] || '',
-      price: product.price,
+      price: Number(product.price),
       size: selectedSize,
-      color: selectedColor || undefined,
+      color: selectedColor || colors[0] || undefined,
       quantity,
-      maxStock,
+      maxStock: stock,
     });
 
     setAddedToCart(true);
@@ -135,7 +136,17 @@ export default function ProductDetailPage() {
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
-  if (isLoading) {
+  if (!id || !isValidId) {
+    return (
+      <div className="container-custom py-24 text-center">
+        <h1 className="text-2xl font-bold mb-2">Invalid Product</h1>
+        <p className="text-muted-foreground mb-6">The product link is malformed.</p>
+        <Button asChild><Link to="/products">Browse Products</Link></Button>
+      </div>
+    );
+  }
+
+  if (isPending) {
     return (
       <div className="container-custom py-8 md:py-12">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
@@ -151,17 +162,20 @@ export default function ProductDetailPage() {
     );
   }
 
-  if (!id || !/^[a-f\d]{24}$/i.test(id)) {
+  if (isError) {
     return (
       <div className="container-custom py-24 text-center">
-        <h1 className="text-2xl font-bold mb-2">Invalid Product</h1>
-        <p className="text-muted-foreground mb-6">The product link is malformed.</p>
-        <Button asChild><Link to="/products">Browse Products</Link></Button>
+        <h1 className="text-2xl font-bold mb-2">Unable to Load Product</h1>
+        <p className="text-muted-foreground mb-6">Something went wrong while loading this product.</p>
+        <div className="flex gap-4 justify-center">
+          <Button variant="outline" onClick={() => refetch()}>Try Again</Button>
+          <Button asChild><Link to="/products">Browse Products</Link></Button>
+        </div>
       </div>
     );
   }
 
-  if (isError || !product) {
+  if (!product) {
     return (
       <div className="container-custom py-24 text-center">
         <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
@@ -174,7 +188,18 @@ export default function ProductDetailPage() {
     );
   }
 
-  const categoryName = typeof product.category === 'object' ? product.category.name : '';
+  const sizes = product.sizes ?? [];
+  const colors = product.colors ?? [];
+  const images = product.images ?? [];
+  const selectedSizeVariant = sizes.find((s) => s.size === selectedSize);
+  const maxStock = selectedSizeVariant?.stock ?? 0;
+  const discount = product.compareAtPrice
+    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+    : 0;
+  const categoryName =
+    product.category && typeof product.category === 'object' && 'name' in product.category
+      ? product.category.name
+      : '';
 
   return (
     <div className="container-custom py-8 md:py-12">
@@ -197,14 +222,14 @@ export default function ProductDetailPage() {
         <div className="space-y-4">
           <div className="aspect-square overflow-hidden rounded-lg bg-muted">
             <img
-              src={getProductImage(product.images[selectedImage])}
+              src={getProductImage(images[selectedImage])}
               alt={product.name}
               className="h-full w-full object-cover"
             />
           </div>
-          {product.images.length > 1 && (
+          {images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {product.images.map((img, index) => (
+              {images.map((img, index) => (
                 <button
                   key={index}
                   type="button"
@@ -260,11 +285,11 @@ export default function ProductDetailPage() {
           <p className="mt-6 text-muted-foreground leading-relaxed">{product.description}</p>
 
           {/* Color Selection */}
-          {product.colors.length > 0 && (
+          {colors.length > 0 && (
             <div className="mt-6">
               <Label className="mb-3 block">Color: {selectedColor || 'Select'}</Label>
               <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => (
+                {colors.map((color) => (
                   <button
                     key={color}
                     type="button"
@@ -287,7 +312,7 @@ export default function ProductDetailPage() {
           <div className="mt-6">
             <Label className="mb-3 block">Size: {selectedSize || 'Select'}</Label>
             <div className="flex flex-wrap gap-2">
-              {product.sizes.map((variant) => (
+              {sizes.map((variant) => (
                 <button
                   key={variant.size}
                   type="button"
@@ -455,9 +480,11 @@ export default function ProductDetailPage() {
           <Separator className="mb-8" />
           <h2 className="text-2xl font-bold mb-6">You May Also Like</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {relatedProducts.map((p) => (
-              <ProductCard key={p._id} product={p} />
-            ))}
+            {relatedProducts
+              .filter((p) => p && Array.isArray(p.sizes) && p.sizes.length > 0)
+              .map((p) => (
+                <ProductCard key={p._id} product={p} />
+              ))}
           </div>
         </section>
       )}

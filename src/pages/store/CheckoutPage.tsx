@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { stripePromise } from '@/lib/stripe';
 import { toast } from 'sonner';
 import { CreditCard, Banknote, Tag, Loader2, Sparkles } from 'lucide-react';
 import api from '@/lib/api';
@@ -30,58 +28,6 @@ const shippingSchema = z.object({
 });
 
 type ShippingFormData = z.infer<typeof shippingSchema>;
-
-function StripePaymentForm({
-  orderId,
-  onSuccess,
-}: {
-  orderId: string;
-  onSuccess: () => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
-    });
-
-    if (error) {
-      toast.error(error.message || 'Payment failed');
-      setProcessing(false);
-      return;
-    }
-
-    if (paymentIntent?.status === 'succeeded') {
-      try {
-        await api.post(`/orders/${orderId}/confirm-payment`);
-        onSuccess();
-      } catch {
-        toast.error('Payment received but order confirmation failed. Please contact support.');
-      }
-    }
-    setProcessing(false);
-  };
-
-  return (
-    <form onSubmit={handlePayment} className="space-y-4 mt-6">
-      <PaymentElement />
-      <Button type="submit" className="w-full" size="lg" disabled={!stripe || processing}>
-        {processing ? (
-          <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
-        ) : (
-          'Pay Now'
-        )}
-      </Button>
-    </form>
-  );
-}
 
 function DemoPaymentForm({
   orderId,
@@ -129,6 +75,7 @@ function DemoPaymentForm({
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { items, getSubtotal, clearCart, validateAndSync } = useCartStore();
   const subtotal = getSubtotal();
   const shippingCost = subtotal >= 100 ? 0 : 9.99;
@@ -140,7 +87,6 @@ export default function CheckoutPage() {
   const [couponApplied, setCouponApplied] = useState('');
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
@@ -154,6 +100,14 @@ export default function CheckoutPage() {
   });
 
   const total = Math.max(0, subtotal - discount + shippingCost);
+
+  useEffect(() => {
+    if (searchParams.get('cancelled') === 'true') {
+      toast.info('Payment was cancelled. You can try again when ready.');
+      searchParams.delete('cancelled');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const prepareCheckout = async () => {
@@ -221,19 +175,28 @@ export default function CheckoutPage() {
       };
       flowLog('checkout-payload', payload);
 
-      const { data } = await api.post<{ order: Order; clientSecret?: string; demoMode?: boolean }>(
-        '/orders',
-        payload
-      );
+      const { data } = await api.post<{
+        order: Order;
+        checkoutUrl?: string;
+        demoMode?: boolean;
+      }>('/orders', payload);
+
+      flowLog('checkout-order-created', {
+        orderId: data.order._id,
+        orderTotal: data.order.total,
+        subtotal: data.order.subtotal,
+        shipping: data.order.shippingCost,
+        discount: data.order.discount,
+        itemCount: data.order.items.length,
+      });
 
       if (paymentMethod === 'stripe' && data.demoMode) {
         setDemoMode(true);
         setPendingOrderId(data.order._id);
         toast.success('Order created. Complete demo payment below.');
-      } else if (paymentMethod === 'stripe' && data.clientSecret) {
-        setClientSecret(data.clientSecret);
-        setPendingOrderId(data.order._id);
-        toast.success('Order created. Complete your payment below.');
+      } else if (paymentMethod === 'stripe' && data.checkoutUrl) {
+        toast.success('Redirecting to secure Stripe checkout...');
+        window.location.href = data.checkoutUrl;
       } else {
         clearCart();
         toast.success('Order placed successfully!');
@@ -266,7 +229,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (items.length === 0 && !clientSecret && !demoMode) {
+  if (items.length === 0 && !demoMode) {
     return (
       <div className="container-custom py-24 text-center">
         <h1 className="text-2xl font-bold mb-2">Nothing to checkout</h1>
@@ -282,116 +245,114 @@ export default function CheckoutPage() {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {!clientSecret && !demoMode ? (
-            <>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                <section className="border rounded-lg p-6">
-                  <h2 className="font-semibold text-lg mb-4">Shipping Address</h2>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2">
-                      <Label htmlFor="street">Street Address</Label>
-                      <Input id="street" {...register('street')} className="mt-1" />
-                      {errors.street && <p className="text-sm text-destructive mt-1">{errors.street.message}</p>}
-                    </div>
-                    <div>
-                      <Label htmlFor="city">City</Label>
-                      <Input id="city" {...register('city')} className="mt-1" />
-                      {errors.city && <p className="text-sm text-destructive mt-1">{errors.city.message}</p>}
-                    </div>
-                    <div>
-                      <Label htmlFor="state">State</Label>
-                      <Input id="state" {...register('state')} className="mt-1" />
-                      {errors.state && <p className="text-sm text-destructive mt-1">{errors.state.message}</p>}
-                    </div>
-                    <div>
-                      <Label htmlFor="zipCode">ZIP Code</Label>
-                      <Input id="zipCode" {...register('zipCode')} className="mt-1" />
-                      {errors.zipCode && <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>}
-                    </div>
-                    <div>
-                      <Label htmlFor="country">Country</Label>
-                      <Input id="country" {...register('country')} className="mt-1" />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Label htmlFor="notes">Order Notes (optional)</Label>
-                      <Textarea id="notes" {...register('notes')} className="mt-1" rows={3} />
-                    </div>
+          {!demoMode ? (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              <section className="border rounded-lg p-6">
+                <h2 className="font-semibold text-lg mb-4">Shipping Address</h2>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="street">Street Address</Label>
+                    <Input id="street" {...register('street')} className="mt-1" />
+                    {errors.street && <p className="text-sm text-destructive mt-1">{errors.street.message}</p>}
                   </div>
-                </section>
-
-                <section className="border rounded-lg p-6">
-                  <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <Tag className="h-5 w-5" /> Coupon Code
-                  </h2>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter coupon code"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      disabled={!!couponApplied}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleValidateCoupon}
-                      disabled={validatingCoupon || !!couponApplied}
-                    >
-                      {validatingCoupon ? 'Validating...' : couponApplied ? 'Applied' : 'Apply'}
-                    </Button>
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    <Input id="city" {...register('city')} className="mt-1" />
+                    {errors.city && <p className="text-sm text-destructive mt-1">{errors.city.message}</p>}
                   </div>
-                  {couponApplied && (
-                    <p className="text-sm text-green-600 mt-2">
-                      Coupon {couponApplied} applied — saving {formatPrice(discount)}
-                    </p>
-                  )}
-                </section>
-
-                <section className="border rounded-lg p-6">
-                  <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('stripe')}
-                      className={cn(
-                        'flex items-center gap-3 p-4 border rounded-lg transition-colors text-left',
-                        paymentMethod === 'stripe' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
-                      )}
-                    >
-                      <CreditCard className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Credit / Debit Card</p>
-                        <p className="text-sm text-muted-foreground">Secure payment via Stripe</p>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('cod')}
-                      className={cn(
-                        'flex items-center gap-3 p-4 border rounded-lg transition-colors text-left',
-                        paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
-                      )}
-                    >
-                      <Banknote className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Cash on Delivery</p>
-                        <p className="text-sm text-muted-foreground">Pay when you receive</p>
-                      </div>
-                    </button>
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input id="state" {...register('state')} className="mt-1" />
+                    {errors.state && <p className="text-sm text-destructive mt-1">{errors.state.message}</p>}
                   </div>
-                </section>
+                  <div>
+                    <Label htmlFor="zipCode">ZIP Code</Label>
+                    <Input id="zipCode" {...register('zipCode')} className="mt-1" />
+                    {errors.zipCode && <p className="text-sm text-destructive mt-1">{errors.zipCode.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="country">Country</Label>
+                    <Input id="country" {...register('country')} className="mt-1" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="notes">Order Notes (optional)</Label>
+                    <Textarea id="notes" {...register('notes')} className="mt-1" rows={3} />
+                  </div>
+                </div>
+              </section>
 
-                <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-                  {submitting ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Placing Order...</>
-                  ) : paymentMethod === 'cod' ? (
-                    `Place Order — ${formatPrice(total)}`
-                  ) : (
-                    'Continue to Payment'
-                  )}
-                </Button>
-              </form>
-            </>
-          ) : demoMode ? (
+              <section className="border rounded-lg p-6">
+                <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Tag className="h-5 w-5" /> Coupon Code
+                </h2>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    disabled={!!couponApplied}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleValidateCoupon}
+                    disabled={validatingCoupon || !!couponApplied}
+                  >
+                    {validatingCoupon ? 'Validating...' : couponApplied ? 'Applied' : 'Apply'}
+                  </Button>
+                </div>
+                {couponApplied && (
+                  <p className="text-sm text-green-600 mt-2">
+                    Coupon {couponApplied} applied — saving {formatPrice(discount)}
+                  </p>
+                )}
+              </section>
+
+              <section className="border rounded-lg p-6">
+                <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('stripe')}
+                    className={cn(
+                      'flex items-center gap-3 p-4 border rounded-lg transition-colors text-left',
+                      paymentMethod === 'stripe' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                    )}
+                  >
+                    <CreditCard className="h-5 w-5" />
+                    <div>
+                      <p className="font-medium">Credit / Debit Card</p>
+                      <p className="text-sm text-muted-foreground">Secure payment via Stripe Checkout</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cod')}
+                    className={cn(
+                      'flex items-center gap-3 p-4 border rounded-lg transition-colors text-left',
+                      paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                    )}
+                  >
+                    <Banknote className="h-5 w-5" />
+                    <div>
+                      <p className="font-medium">Cash on Delivery</p>
+                      <p className="text-sm text-muted-foreground">Pay when you receive</p>
+                    </div>
+                  </button>
+                </div>
+              </section>
+
+              <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+                {submitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Placing Order...</>
+                ) : paymentMethod === 'cod' ? (
+                  `Place Order — ${formatPrice(total)}`
+                ) : (
+                  'Continue to Stripe Payment'
+                )}
+              </Button>
+            </form>
+          ) : (
             <section className="border rounded-lg p-6">
               <h2 className="font-semibold text-lg mb-2">Complete Payment</h2>
               <p className="text-muted-foreground text-sm mb-4">
@@ -402,22 +363,6 @@ export default function CheckoutPage() {
                 total={total}
                 onSuccess={handlePaymentSuccess}
               />
-            </section>
-          ) : (
-            <section className="border rounded-lg p-6">
-              <h2 className="font-semibold text-lg mb-2">Complete Payment</h2>
-              <p className="text-muted-foreground text-sm mb-4">
-                Total: {formatPrice(total)}
-              </p>
-              {stripePromise ? (
-                <Elements stripe={stripePromise} options={{ clientSecret: clientSecret! }}>
-                  <StripePaymentForm orderId={pendingOrderId!} onSuccess={handlePaymentSuccess} />
-                </Elements>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Stripe is not configured. Use demo payment or add VITE_STRIPE_PUBLISHABLE_KEY.
-                </p>
-              )}
             </section>
           )}
         </div>

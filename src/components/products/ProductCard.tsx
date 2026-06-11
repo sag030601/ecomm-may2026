@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, formatPrice } from '@/lib/utils';
-import { getProductImage } from '@/lib/images';
+import { getProductImage, onImageError, PLACEHOLDER_IMAGE } from '@/lib/images';
 import { useCartStore } from '@/stores/cartStore';
 import { useWishlist } from '@/hooks/useWishlist';
 import type { Product } from '@/types';
@@ -18,12 +18,13 @@ interface ProductCardProps {
 }
 
 function getTotalStock(product: Product): number {
-  return product.sizes.reduce((sum, s) => sum + s.stock, 0);
+  return (product.sizes ?? []).reduce((sum, s) => sum + (s.stock ?? 0), 0);
 }
 
 function getDefaultVariant(product: Product) {
-  const inStock = product.sizes.find((s) => s.stock > 0);
-  return inStock ?? product.sizes[0];
+  const sizes = product.sizes ?? [];
+  const inStock = sizes.find((s) => s.stock > 0);
+  return inStock ?? sizes[0];
 }
 
 export function ProductCard({
@@ -56,10 +57,10 @@ export function ProductCard({
     addItem({
       productId: product._id,
       name: product.name,
-      image: product.images[0] || '',
-      price: product.price,
+      image: product.images?.[0] || '',
+      price: Number(product.price),
       size: sizeVariant.size,
-      color: product.colors[0],
+      color: product.colors?.[0] || undefined,
       maxStock: sizeVariant.stock,
       quantity: 1,
     });
@@ -87,9 +88,10 @@ export function ProductCard({
           src={getProductImage(product.images[0])}
           alt={product.name}
           loading={priority ? 'eager' : 'lazy'}
-          {...(priority ? { fetchpriority: 'high' as const } : {})}
+          {...(priority ? { fetchPriority: 'high' as const } : {})}
           decoding="async"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={onImageError(PLACEHOLDER_IMAGE)}
         />
 
         {/* Badges */}

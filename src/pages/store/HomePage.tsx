@@ -9,6 +9,8 @@ import { PromoBanner } from '@/components/home/PromoBanner';
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 import { TrustBadges } from '@/components/home/TrustBadges';
 import { NewsletterSection } from '@/components/home/NewsletterSection';
+import { BrandLogosSection } from '@/components/home/BrandLogosSection';
+import { PROMO_IMAGES } from '@/lib/images';
 import type { Banner, Category } from '@/types';
 
 export default function HomePage() {
@@ -71,7 +73,7 @@ export default function HomePage() {
         subtitle="Lightweight fabrics, bold silhouettes, and effortless style for the season ahead. Shop the edit before it sells out."
         cta="Shop the Collection"
         href="/products?featured=true"
-        image="https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1600&q=80"
+        image={PROMO_IMAGES.summer}
       />
 
       {/* 8. New arrivals */}
@@ -103,7 +105,7 @@ export default function HomePage() {
         subtitle="Curated combo packs with exclusive pricing. Build your wardrobe smarter."
         cta="View Combos"
         href="/products?specialCombo=true"
-        image="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&q=80"
+        image={PROMO_IMAGES.bundle}
         reversed
       />
 
@@ -119,13 +121,16 @@ export default function HomePage() {
         columns={4}
       />
 
-      {/* 12. Testimonials */}
+      {/* 12. Brand logos */}
+      <BrandLogosSection />
+
+      {/* 13. Testimonials */}
       <TestimonialsSection />
 
-      {/* 13. Trust badges */}
+      {/* 14. Trust badges */}
       <TrustBadges />
 
-      {/* 14. Newsletter */}
+      {/* 15. Newsletter */}
       <NewsletterSection />
     </div>
   );

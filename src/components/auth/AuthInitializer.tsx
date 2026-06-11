@@ -5,10 +5,23 @@ import { waitForStoreHydration } from '@/lib/storeHydration';
 import { flowLog } from '@/lib/flowLogger';
 import api from '@/lib/api';
 
+const PUBLIC_PATHS = [
+  '/',
+  '/products',
+  '/cart',
+  '/login',
+  '/register',
+  '/auth/callback',
+];
+
+const isPublicPath = (pathname: string) =>
+  PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith('/products/'));
+
 export function AuthInitializer({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const location = useLocation();
   const { accessToken, setAuth, clearAuth } = useAuthStore();
+  const isPublic = isPublicPath(location.pathname);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -38,7 +51,7 @@ export function AuthInitializer({ children }: { children: React.ReactNode }) {
     bootstrap();
   }, []);
 
-  if (!ready) {
+  if (!ready && !isPublic) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>

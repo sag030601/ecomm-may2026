@@ -89,12 +89,20 @@ export function FlashSaleSection() {
           </div>
         )}
 
+        {!isLoading && isError && (
+          <p className="text-center text-white/70 py-8">Unable to load flash deals right now.</p>
+        )}
+
         {!isLoading && !isError && data && data.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {data.map((product) => (
               <ProductCard key={product._id} product={product} showQuickAdd showWishlist variant="on-dark" />
             ))}
           </div>
+        )}
+
+        {!isLoading && !isError && (!data || data.length === 0) && (
+          <p className="text-center text-white/70 py-8">No flash deals available at the moment. Check back soon!</p>
         )}
 
         <div className="mt-10 text-center">

@@ -29,8 +29,10 @@ interface CartState {
   validateAndSync: () => Promise<CartSyncResult>;
 }
 
+const normalizeColor = (color?: string) => color?.trim() || undefined;
+
 const itemKey = (productId: string, size: string, color?: string) =>
-  `${productId}-${size}-${color || 'default'}`;
+  `${productId}-${size}-${normalizeColor(color) || 'default'}`;
 
 const mergeValidatedItems = (items: CartItem[]): CartItem[] => {
   const merged = new Map<string, CartItem>();
@@ -59,7 +61,9 @@ export const useCartStore = create<CartState>()(
       items: [],
 
       addItem: (item) => {
-        const key = itemKey(item.productId, item.size, item.color);
+        const color = normalizeColor(item.color);
+        const key = itemKey(item.productId, item.size, color);
+        const price = Number(item.price);
         set((state) => {
           const existing = state.items.find(
             (i) => itemKey(i.productId, i.size, i.color) === key
@@ -69,13 +73,13 @@ export const useCartStore = create<CartState>()(
             return {
               items: state.items.map((i) =>
                 itemKey(i.productId, i.size, i.color) === key
-                  ? { ...i, quantity: newQty, maxStock: item.maxStock, price: item.price }
+                  ? { ...i, quantity: newQty, maxStock: item.maxStock, price, color }
                   : i
               ),
             };
           }
           return {
-            items: [...state.items, { ...item, quantity: item.quantity || 1 }],
+            items: [...state.items, { ...item, color, price, quantity: item.quantity || 1 }],
           };
         });
       },
@@ -104,7 +108,8 @@ export const useCartStore = create<CartState>()(
 
       clearCart: () => set({ items: [] }),
 
-      getSubtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+      getSubtotal: () =>
+        get().items.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0),
 
       getItemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
 

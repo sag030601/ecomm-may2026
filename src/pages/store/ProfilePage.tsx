@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -68,7 +68,11 @@ const orderStatusVariant: Record<Order['orderStatus'], 'default' | 'secondary' |
 };
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab: TabId =
+    tabParam === 'orders' || tabParam === 'addresses' ? tabParam : 'profile';
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const { setAuth, accessToken, logout } = useAuthStore();

@@ -12,6 +12,8 @@ import ProductsPage from '@/pages/store/ProductsPage';
 import ProductDetailPage from '@/pages/store/ProductDetailPage';
 import CartPage from '@/pages/store/CartPage';
 import CheckoutPage from '@/pages/store/CheckoutPage';
+import CheckoutSuccessPage from '@/pages/store/CheckoutSuccessPage';
+import NotFoundPage from '@/pages/store/NotFoundPage';
 import LoginPage from '@/pages/store/LoginPage';
 import RegisterPage from '@/pages/store/RegisterPage';
 import ProfilePage from '@/pages/store/ProfilePage';
@@ -51,6 +53,9 @@ function App() {
             <Route path="checkout" element={
               <ProtectedRoute><CheckoutPage /></ProtectedRoute>
             } />
+            <Route path="checkout/success" element={
+              <ProtectedRoute><CheckoutSuccessPage /></ProtectedRoute>
+            } />
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
             <Route path="auth/callback" element={<AuthCallbackPage />} />
@@ -60,6 +65,7 @@ function App() {
             <Route path="orders/:id" element={
               <ProtectedRoute><OrderDetailPage /></ProtectedRoute>
             } />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
 
           <Route path="admin" element={

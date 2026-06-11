@@ -4,10 +4,11 @@ import { ChevronLeft, ChevronRight, Shield, Sparkles, Truck } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getHeroImage, HERO_SLIDE_IMAGES, onImageError } from '@/lib/images';
 import type { Banner } from '@/types';
 
 const FALLBACK_HERO = {
-  image: 'https://images.unsplash.com/photo-1441984904996-e0b6a68737d2?w=1920&q=80',
+  image: HERO_SLIDE_IMAGES[0],
   title: 'Elevate Your Everyday',
   subtitle: 'Discover curated premium fashion & lifestyle pieces — crafted for those who demand more.',
 };
@@ -29,6 +30,13 @@ export function HeroSection({ banners, isLoading, isError }: HeroSectionProps) {
   const slides = banners?.length ? banners : isLoading ? [] : [{ ...FALLBACK_HERO, _id: 'fallback' } as Banner & { _id: string }];
 
   useEffect(() => {
+    slides.forEach((banner, index) => {
+      const img = new Image();
+      img.src = getHeroImage(banner.image, index);
+    });
+  }, [slides]);
+
+  useEffect(() => {
     if (slides.length <= 1) return;
     const timer = setInterval(() => setCurrent((p) => (p + 1) % slides.length), 6000);
     return () => clearInterval(timer);
@@ -47,27 +55,31 @@ export function HeroSection({ banners, isLoading, isError }: HeroSectionProps) {
   return (
     <section className="relative min-h-[75vh] lg:min-h-[88vh] overflow-hidden" aria-label="Hero banner">
       {/* Background slides */}
-      {slides.map((banner, index) => (
-        <div
-          key={banner._id}
-          className={cn(
-            'absolute inset-0 transition-opacity duration-1000 ease-in-out',
-            index === current ? 'opacity-100 z-0' : 'opacity-0 z-0'
-          )}
-          aria-hidden={index !== current}
-        >
-          <img
-            src={banner.image}
-            alt=""
-            className="h-full w-full object-cover scale-105"
-            loading={index === 0 ? 'eager' : 'lazy'}
-            {...(index === 0 ? { fetchpriority: 'high' as const } : {})}
-            decoding="async"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        </div>
-      ))}
+      {slides.map((banner, index) => {
+        const imageSrc = getHeroImage(banner.image, index);
+        return (
+          <div
+            key={banner._id ?? `slide-${index}`}
+            className={cn(
+              'absolute inset-0 transition-opacity duration-1000 ease-in-out',
+              index === current ? 'opacity-100 z-0' : 'opacity-0 z-0'
+            )}
+            aria-hidden={index !== current}
+          >
+            <img
+              src={imageSrc}
+              alt={banner.title || 'Hero banner'}
+              className="h-full w-full object-cover scale-105"
+              loading="eager"
+              decoding="async"
+              {...(index === 0 ? { fetchPriority: 'high' as const } : {})}
+              onError={onImageError(HERO_SLIDE_IMAGES[index % HERO_SLIDE_IMAGES.length])}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          </div>
+        );
+      })}
 
       {/* Content */}
       <div className="relative z-10 flex min-h-[75vh] lg:min-h-[88vh] items-center">
@@ -88,7 +100,7 @@ export function HeroSection({ banners, isLoading, isError }: HeroSectionProps) {
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Button size="lg" className="h-12 px-8 text-base bg-white text-black hover:bg-white/90" asChild>
-                <Link to="/products">Shop Now</Link>
+                <Link to={active?.link || '/products'}>Shop Now</Link>
               </Button>
               <Button
                 size="lg"

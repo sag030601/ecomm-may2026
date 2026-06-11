@@ -43,6 +43,7 @@ export default function ProductsPage() {
     search: searchParams.get('search') || '',
     sort: searchParams.get('sort') || 'newest',
     bestSeller: searchParams.get('bestSeller') === 'true',
+    featured: searchParams.get('featured') === 'true',
     specialCombo: searchParams.get('specialCombo') === 'true',
     crazyDeal: searchParams.get('crazyDeal') === 'true',
     page: searchParams.get('page') || '1',
@@ -80,6 +81,7 @@ export default function ProductsPage() {
     if (filters.color) params.color = filters.color;
     if (filters.search) params.search = filters.search;
     if (filters.bestSeller) params.bestSeller = 'true';
+    if (filters.featured) params.featured = 'true';
     if (filters.specialCombo) params.specialCombo = 'true';
     if (filters.crazyDeal) params.crazyDeal = 'true';
     return params;
@@ -88,8 +90,11 @@ export default function ProductsPage() {
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const { data } = await api.get<{ categories: Category[]; subcategories: Category[] }>('/categories');
-      return data;
+      const { data } = await api.get<{ categories?: Category[]; subcategories?: Category[] }>('/categories');
+      return {
+        categories: data.categories ?? [],
+        subcategories: data.subcategories ?? [],
+      };
     },
   });
 
@@ -119,6 +124,7 @@ export default function ProductsPage() {
     filters.size,
     filters.color,
     filters.bestSeller,
+    filters.featured,
     filters.specialCombo,
     filters.crazyDeal,
   ].filter(Boolean).length;
@@ -140,7 +146,7 @@ export default function ProductsPage() {
           <SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {categoriesData?.categories.map((cat) => (
+            {(categoriesData?.categories ?? []).map((cat) => (
               <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>
             ))}
           </SelectContent>
@@ -222,6 +228,15 @@ export default function ProductsPage() {
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input
             type="checkbox"
+            checked={filters.featured}
+            onChange={(e) => updateFilter('featured', e.target.checked)}
+            className="rounded border-input"
+          />
+          Featured
+        </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
             checked={filters.specialCombo}
             onChange={(e) => updateFilter('specialCombo', e.target.checked)}
             className="rounded border-input"
@@ -245,7 +260,17 @@ export default function ProductsPage() {
     <div className="container-custom py-8 md:py-12">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
-          {filters.search ? `Results for "${filters.search}"` : 'Shop All Products'}
+          {filters.search
+            ? `Results for "${filters.search}"`
+            : filters.featured
+              ? 'Featured Products'
+              : filters.bestSeller
+                ? 'Best Sellers'
+                : filters.crazyDeal
+                  ? 'Flash Deals'
+                  : filters.specialCombo
+                    ? 'Special Combos'
+                    : 'Shop All Products'}
         </h1>
         {data?.pagination && (
           <p className="text-muted-foreground mt-1">
