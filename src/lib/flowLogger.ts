@@ -5,9 +5,10 @@ type FlowEvent =
   | 'cart-after-login'
   | 'cart-merge-result'
   | 'checkout-payload'
+  | 'checkout-order-created'
   | 'auth-state-change';
 
-export function flowLog(event: FlowEvent, data?: Record<string, unknown>): void {
+export function flowLog(event: FlowEvent, data?: object): void {
   if (!import.meta.env.DEV) return;
   console.debug(`[flow:${event}]`, data ?? {});
 }

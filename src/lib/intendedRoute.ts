@@ -4,8 +4,30 @@ const STORAGE_KEY = 'auth-intended-route';
 
 const BLOCKED_PREFIXES = ['/login', '/register', '/auth/callback'];
 
-export function locationToPath(location: Pick<Location, 'pathname' | 'search' | 'hash'>): string {
-  return `${location.pathname}${location.search}${location.hash}`;
+/** Minimal route snapshot stored in login/register navigation state. */
+export type AuthRedirectLocation = {
+  pathname: string;
+  search?: string;
+  hash?: string;
+};
+
+export type AuthLocationState = {
+  from?: AuthRedirectLocation;
+};
+
+export function getAuthLocationState(location: { state: unknown }): AuthLocationState | null {
+  if (!location.state || typeof location.state !== 'object') {
+    return null;
+  }
+  const state = location.state as AuthLocationState;
+  if (!state.from || typeof state.from.pathname !== 'string') {
+    return null;
+  }
+  return { from: state.from };
+}
+
+export function locationToPath(location: AuthRedirectLocation): string {
+  return `${location.pathname}${location.search ?? ''}${location.hash ?? ''}`;
 }
 
 export function saveIntendedRoute(locationOrPath: Location | string): void {
@@ -27,9 +49,7 @@ export function getAndClearIntendedRoute(): string {
   return '/';
 }
 
-export function resolveLoginReturnPath(
-  locationState: { from?: Pick<Location, 'pathname' | 'search' | 'hash'> } | null
-): string {
+export function resolveLoginReturnPath(locationState: AuthLocationState | null): string {
   if (locationState?.from) {
     return locationToPath(locationState.from);
   }

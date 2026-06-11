@@ -29,8 +29,27 @@ const reviewSchema = z.object({
 
 type ReviewFormData = z.infer<typeof reviewSchema>;
 
+function isValidProductId(id: string | undefined): id is string {
+  return !!id && /^[a-f\d]{24}$/i.test(id);
+}
+
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
+
+  if (!isValidProductId(id)) {
+    return (
+      <div className="container-custom py-24 text-center">
+        <h1 className="text-2xl font-bold mb-2">Invalid Product</h1>
+        <p className="text-muted-foreground mb-6">The product link is malformed.</p>
+        <Button asChild><Link to="/products">Browse Products</Link></Button>
+      </div>
+    );
+  }
+
+  return <ProductDetailContent productId={id} />;
+}
+
+function ProductDetailContent({ productId }: { productId: string }) {
   const location = useLocation();
   const addItem = useCartStore((s) => s.addItem);
   const { isAuthenticated } = useAuthStore();
@@ -42,34 +61,29 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
 
-  const isValidId = !!id && /^[a-f\d]{24}$/i.test(id);
-
-  const { data: product, isPending, isError, refetch } = useQuery({
-    queryKey: ['product', id],
+  const { data: product, isPending, isError, refetch } = useQuery<Product | undefined>({
+    queryKey: ['product', productId],
     queryFn: async () => {
-      const { data } = await api.get<{ product: Product }>(`/products/${id}`);
+      const { data } = await api.get<{ product?: Product }>(`/products/${productId}`);
       return data.product;
     },
-    enabled: isValidId,
     retry: 1,
   });
 
   const { data: relatedProducts } = useQuery({
-    queryKey: ['related-products', id],
+    queryKey: ['related-products', productId],
     queryFn: async () => {
-      const { data } = await api.get<{ products: Product[] }>(`/products/${id}/related`);
+      const { data } = await api.get<{ products: Product[] }>(`/products/${productId}/related`);
       return data.products;
     },
-    enabled: isValidId,
   });
 
   const { data: reviews, isLoading: reviewsLoading } = useQuery({
-    queryKey: ['reviews', id],
+    queryKey: ['reviews', productId],
     queryFn: async () => {
-      const { data } = await api.get<{ reviews: Review[] }>(`/reviews/product/${id}`);
+      const { data } = await api.get<{ reviews: Review[] }>(`/reviews/product/${productId}`);
       return data.reviews;
     },
-    enabled: isValidId,
   });
 
   const {
@@ -88,12 +102,12 @@ export default function ProductDetailPage() {
 
   const reviewMutation = useMutation({
     mutationFn: async (formData: ReviewFormData) => {
-      await api.post('/reviews', { ...formData, product: id });
+      await api.post('/reviews', { ...formData, product: productId });
     },
     onSuccess: () => {
       toast.success('Review submitted! It will appear once approved.');
       reset();
-      queryClient.invalidateQueries({ queryKey: ['reviews', id] });
+      queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
     },
     onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || 'Failed to submit review');
@@ -135,16 +149,6 @@ export default function ProductDetailPage() {
     toast.success('Added to cart');
     setTimeout(() => setAddedToCart(false), 2000);
   };
-
-  if (!id || !isValidId) {
-    return (
-      <div className="container-custom py-24 text-center">
-        <h1 className="text-2xl font-bold mb-2">Invalid Product</h1>
-        <p className="text-muted-foreground mb-6">The product link is malformed.</p>
-        <Button asChild><Link to="/products">Browse Products</Link></Button>
-      </div>
-    );
-  }
 
   if (isPending) {
     return (

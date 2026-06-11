@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
 import { completePostAuthFlow } from '@/lib/authFlow';
-import { resolveLoginReturnPath } from '@/lib/intendedRoute';
+import { getAuthLocationState, resolveLoginReturnPath } from '@/lib/intendedRoute';
 import { useAuthStore } from '@/stores/authStore';
 import type { User } from '@/types';
 
@@ -38,9 +38,7 @@ export default function RegisterPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [loading, setLoading] = useState(false);
 
-  const returnPath = resolveLoginReturnPath(
-    location.state as { from?: { pathname: string; search?: string; hash?: string } } | null
-  );
+  const returnPath = resolveLoginReturnPath(getAuthLocationState(location));
 
   const {
     register,

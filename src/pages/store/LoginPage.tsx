@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Loader2, ShoppingBag } from 'lucide-react';
 import api from '@/lib/api';
 import { completePostAuthFlow } from '@/lib/authFlow';
-import { resolveLoginReturnPath } from '@/lib/intendedRoute';
+import { getAuthLocationState, resolveLoginReturnPath } from '@/lib/intendedRoute';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,9 +31,7 @@ export default function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [loading, setLoading] = useState(false);
 
-  const returnPath = resolveLoginReturnPath(
-    location.state as { from?: { pathname: string; search?: string; hash?: string } } | null
-  );
+  const returnPath = resolveLoginReturnPath(getAuthLocationState(location));
 
   const {
     register,
