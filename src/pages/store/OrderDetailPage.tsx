@@ -146,9 +146,7 @@ export default function OrderDetailPage() {
             <h2 className="font-semibold text-lg flex items-center gap-2 mb-4">
               <CreditCard className="h-5 w-5" /> Payment
             </h2>
-            <p className="text-sm capitalize text-muted-foreground">
-              {order.paymentMethod === 'stripe' ? 'Credit / Debit Card (Stripe)' : 'Cash on Delivery'}
-            </p>
+            <p className="text-sm text-muted-foreground">Credit / Debit Card (Stripe)</p>
           </section>
 
           <section className="border rounded-lg p-6">

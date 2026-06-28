@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 import { StoreLayout } from '@/components/layout/StoreLayout';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -85,7 +85,7 @@ function App() {
           </Routes>
         </AuthInitializer>
       </BrowserRouter>
-      <Toaster position="top-right" richColors />
+      <Toaster />
     </QueryClientProvider>
   );
 }

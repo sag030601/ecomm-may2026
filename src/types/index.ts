@@ -114,7 +114,7 @@ export interface Order {
     zipCode: string;
     country: string;
   };
-  paymentMethod: 'stripe' | 'cod';
+  paymentMethod: 'stripe';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   subtotal: number;

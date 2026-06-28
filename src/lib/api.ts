@@ -91,7 +91,7 @@ export default api;
 export const getApiBaseUrl = () => import.meta.env.VITE_API_URL || '/api';
 
 export const getOAuthUrl = (provider: string, clientRedirect?: string) => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
   const base = apiUrl.replace(/\/api\/?$/, '');
   const url = new URL(`${base}/api/auth/oauth/${provider}`);
   if (clientRedirect) {

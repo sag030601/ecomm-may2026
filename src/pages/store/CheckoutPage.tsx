@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { CreditCard, Banknote, Tag, Loader2, Sparkles } from 'lucide-react';
+import { CreditCard, Tag, Loader2, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 import api from '@/lib/api';
-import { cn, formatPrice } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
 import { getProductImage } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,7 +81,6 @@ export default function CheckoutPage() {
   const shippingCost = subtotal >= 100 ? 0 : 9.99;
 
   const [cartReady, setCartReady] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'cod'>('stripe');
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponApplied, setCouponApplied] = useState('');
@@ -89,6 +88,7 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   const {
     register,
@@ -149,14 +149,15 @@ export default function CheckoutPage() {
       toast.error('Your cart is empty');
       return;
     }
+    if (submittingRef.current) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const syncResult = await validateAndSync();
       const checkoutItems = syncResult.after;
       if (checkoutItems.length === 0) {
         toast.error('Your cart is empty or items are no longer available');
-        setSubmitting(false);
         return;
       }
 
@@ -169,7 +170,7 @@ export default function CheckoutPage() {
           quantity: item.quantity,
         })),
         shippingAddress,
-        paymentMethod,
+        paymentMethod: 'stripe' as const,
         couponCode: couponApplied || undefined,
         notes,
       };
@@ -190,17 +191,15 @@ export default function CheckoutPage() {
         itemCount: data.order.items.length,
       });
 
-      if (paymentMethod === 'stripe' && data.demoMode) {
+      if (data.demoMode) {
         setDemoMode(true);
         setPendingOrderId(data.order._id);
         toast.success('Order created. Complete demo payment below.');
-      } else if (paymentMethod === 'stripe' && data.checkoutUrl) {
+      } else if (data.checkoutUrl) {
         toast.success('Redirecting to secure Stripe checkout...');
-        window.location.href = data.checkoutUrl;
+        window.location.assign(data.checkoutUrl);
       } else {
-        clearCart();
-        toast.success('Order placed successfully!');
-        navigate(`/orders/${data.order._id}`);
+        toast.error('Unable to start payment. Please try again.');
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -210,6 +209,7 @@ export default function CheckoutPage() {
         await validateAndSync();
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -309,46 +309,31 @@ export default function CheckoutPage() {
               </section>
 
               <section className="border rounded-lg p-6">
-                <h2 className="font-semibold text-lg mb-4">Payment Method</h2>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('stripe')}
-                    className={cn(
-                      'flex items-center gap-3 p-4 border rounded-lg transition-colors text-left',
-                      paymentMethod === 'stripe' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
-                    )}
-                  >
-                    <CreditCard className="h-5 w-5" />
-                    <div>
-                      <p className="font-medium">Credit / Debit Card</p>
-                      <p className="text-sm text-muted-foreground">Secure payment via Stripe Checkout</p>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('cod')}
-                    className={cn(
-                      'flex items-center gap-3 p-4 border rounded-lg transition-colors text-left',
-                      paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
-                    )}
-                  >
-                    <Banknote className="h-5 w-5" />
-                    <div>
-                      <p className="font-medium">Cash on Delivery</p>
-                      <p className="text-sm text-muted-foreground">Pay when you receive</p>
-                    </div>
-                  </button>
+                <h2 className="font-semibold text-lg mb-4">Payment</h2>
+                <div className="flex items-start gap-3 p-4 border rounded-lg bg-primary/5 border-primary/20">
+                  <CreditCard className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-medium">Credit / Debit Card</p>
+                    <p className="text-sm text-muted-foreground">
+                      You&apos;ll be redirected to Stripe to pay securely with your card. All prices are in USD.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Lock className="h-3.5 w-3.5" /> SSL encrypted
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Powered by Stripe
+                  </span>
                 </div>
               </section>
 
               <Button type="submit" size="lg" className="w-full" disabled={submitting}>
                 {submitting ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Placing Order...</>
-                ) : paymentMethod === 'cod' ? (
-                  `Place Order — ${formatPrice(total)}`
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating secure checkout...</>
                 ) : (
-                  'Continue to Stripe Payment'
+                  <>Pay {formatPrice(total)} with Card</>
                 )}
               </Button>
             </form>
