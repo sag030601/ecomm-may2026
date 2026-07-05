@@ -118,6 +118,11 @@ export default function AnalyticsPage() {
     value: item.count,
   }));
 
+  const categoryRevenueData = data.revenueByCategory.map((item) => ({
+    name: item._id,
+    revenue: item.revenue,
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -247,6 +252,32 @@ export default function AnalyticsPage() {
                   <Legend />
                   <Bar dataKey="sold" fill="hsl(var(--primary))" name="Units Sold" radius={[0, 4, 4, 0]} />
                   <Bar dataKey="revenue" fill="hsl(142 76% 36%)" name="Revenue" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Revenue by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {categoryRevenueData.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">No category data.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={categoryRevenueData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
+                  <Tooltip formatter={(value: number) => formatPrice(value)} />
+                  <Bar
+                    dataKey="revenue"
+                    fill="hsl(var(--primary))"
+                    name="Revenue"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}

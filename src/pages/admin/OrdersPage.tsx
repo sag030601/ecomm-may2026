@@ -38,6 +38,8 @@ const paymentStatusVariant: Record<string, 'default' | 'secondary' | 'destructiv
   refunded: 'outline',
 };
 
+const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'] as const;
+
 export default function OrdersPage() {
   const queryClient = useQueryClient();
 
@@ -52,13 +54,22 @@ export default function OrdersPage() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, orderStatus }: { id: string; orderStatus: string }) =>
-      api.patch(`/orders/${id}/status`, { orderStatus }),
+    mutationFn: ({
+      id,
+      orderStatus,
+      paymentStatus,
+    }: {
+      id: string;
+      orderStatus?: string;
+      paymentStatus?: string;
+    }) => api.patch(`/orders/${id}/status`, { orderStatus, paymentStatus }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-      toast.success('Order status updated');
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-analytics'] });
+      toast.success('Order updated');
     },
-    onError: () => toast.error('Failed to update order status'),
+    onError: () => toast.error('Failed to update order'),
   });
 
   return (
@@ -118,14 +129,31 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-4 py-3">{order.items.length}</td>
                         <td className="px-4 py-3">
-                          <div className="space-y-1">
-                            <Badge variant={paymentStatusVariant[order.paymentStatus] ?? 'outline'}>
-                              {order.paymentStatus}
-                            </Badge>
-                            <div className="text-xs text-muted-foreground uppercase">
-                              {order.paymentMethod}
-                            </div>
-                          </div>
+                          <Select
+                            value={order.paymentStatus}
+                            onValueChange={(value) =>
+                              updateStatusMutation.mutate({
+                                id: order._id,
+                                paymentStatus: value,
+                              })
+                            }
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            <SelectTrigger className="w-32 h-8">
+                              <SelectValue>
+                                <Badge variant={paymentStatusVariant[order.paymentStatus] ?? 'outline'}>
+                                  {order.paymentStatus}
+                                </Badge>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PAYMENT_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </td>
                         <td className="px-4 py-3">
                           <Select
