@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, formatPrice } from '@/lib/utils';
-import { getProductImage, onImageError, PLACEHOLDER_IMAGE } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
+import { PLACEHOLDER_IMAGE } from '@/lib/images';
 import { useCartStore } from '@/stores/cartStore';
 import { useWishlist } from '@/hooks/useWishlist';
 import type { Product } from '@/types';
@@ -84,14 +85,13 @@ export function ProductCard({
       )}
     >
       <Link to={`/products/${product._id}`} className="block relative aspect-[4/5] overflow-hidden bg-muted">
-        <img
-          src={getProductImage(product.images[0])}
+        <OptimizedImage
+          src={product.images[0]}
+          preset="card"
           alt={product.name}
-          loading={priority ? 'eager' : 'lazy'}
-          {...(priority ? { fetchPriority: 'high' as const } : {})}
-          decoding="async"
+          priority={priority}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          onError={onImageError(PLACEHOLDER_IMAGE)}
+          fallback={PLACEHOLDER_IMAGE}
         />
 
         {/* Badges */}

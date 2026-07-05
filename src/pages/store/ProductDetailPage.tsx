@@ -8,7 +8,7 @@ import { Star, Minus, Plus, ShoppingCart, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { cn, formatDate, formatPrice } from '@/lib/utils';
-import { getProductImage } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -225,9 +225,11 @@ function ProductDetailContent({ productId }: { productId: string }) {
         {/* Image Gallery */}
         <div className="space-y-4">
           <div className="aspect-square overflow-hidden rounded-lg bg-muted">
-            <img
-              src={getProductImage(images[selectedImage])}
+            <OptimizedImage
+              src={images[selectedImage]}
+              preset="detail"
               alt={product.name}
+              priority
               className="h-full w-full object-cover"
             />
           </div>
@@ -243,7 +245,13 @@ function ProductDetailContent({ productId }: { productId: string }) {
                     selectedImage === index ? 'border-primary' : 'border-transparent'
                   )}
                 >
-                  <img src={getProductImage(img)} alt="" className="h-full w-full object-cover" />
+                  <OptimizedImage
+                    src={img}
+                    preset="thumb"
+                    alt=""
+                    className="h-full w-full object-cover"
+                    responsive={false}
+                  />
                 </button>
               ))}
             </div>

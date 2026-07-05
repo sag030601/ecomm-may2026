@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { CreditCard, Tag, Loader2, Sparkles, ShieldCheck, Lock } from 'lucide-react';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { getProductImage } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -358,10 +358,12 @@ export default function CheckoutPage() {
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {items.map((item) => (
                 <div key={`${item.productId}-${item.size}-${item.color}`} className="flex gap-3 text-sm">
-                  <img
-                    src={getProductImage(item.image)}
+                  <OptimizedImage
+                    src={item.image}
+                    preset="cart"
                     alt={item.name}
                     className="w-14 h-14 rounded object-cover bg-muted shrink-0"
+                    responsive={false}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="line-clamp-1 font-medium">{item.name}</p>

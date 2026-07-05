@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/images';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -287,8 +288,10 @@ export default function ProductsPage() {
                           <div className="flex items-center gap-3">
                             {product.images[0] && (
                               <img
-                                src={product.images[0]}
+                                src={getOptimizedImageUrl(product.images[0], 80)}
                                 alt={product.name}
+                                loading="lazy"
+                                decoding="async"
                                 className="h-10 w-10 rounded-md object-cover"
                               />
                             )}

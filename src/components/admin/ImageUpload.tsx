@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/images';
 
 interface ImageUploadProps {
   value: string;
@@ -40,7 +41,13 @@ export function ImageUpload({ value, onChange, label = 'Image', className }: Ima
       <p className="text-sm font-medium">{label}</p>
       {value ? (
         <div className="relative inline-block">
-          <img src={value} alt="Preview" className="h-32 w-32 rounded-lg object-cover border" />
+          <img
+            src={getOptimizedImageUrl(value, 256)}
+            alt="Preview"
+            loading="lazy"
+            decoding="async"
+            className="h-32 w-32 rounded-lg object-cover border"
+          />
           <Button
             type="button"
             variant="destructive"
@@ -124,7 +131,13 @@ export function MultiImageUpload({ value, onChange, className }: MultiImageUploa
       <div className="flex flex-wrap gap-3">
         {images.map((url, index) => (
           <div key={`${url}-${index}`} className="relative">
-            <img src={url} alt="" className="h-24 w-24 rounded-lg object-cover border" />
+            <img
+              src={getOptimizedImageUrl(url, 192)}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-24 w-24 rounded-lg object-cover border"
+            />
             <Button
               type="button"
               variant="destructive"

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, MapPin, CreditCard, Package } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate, formatPrice } from '@/lib/utils';
-import { getProductImage } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -100,10 +100,12 @@ export default function OrderDetailPage() {
             <div className="space-y-4">
               {order.items.map((item, index) => (
                 <div key={index} className="flex gap-4">
-                  <img
-                    src={getProductImage(item.image)}
+                  <OptimizedImage
+                    src={item.image}
+                    preset="cart"
                     alt={item.name}
                     className="w-20 h-20 rounded-md object-cover bg-muted shrink-0"
+                    responsive={false}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium">{item.name}</p>

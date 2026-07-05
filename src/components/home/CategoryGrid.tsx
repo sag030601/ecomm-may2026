@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { CATEGORY_IMAGES, getCategoryImage, onImageError } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
+import { CATEGORY_IMAGES } from '@/lib/images';
 import type { Category } from '@/types';
 
 const CURATED_CATEGORIES = [
@@ -25,13 +26,13 @@ export function CategoryGrid({ categories, isLoading }: CategoryGridProps) {
       ? categories.slice(0, 6).map((c) => ({
           name: c.name,
           slug: c.slug,
-          image: getCategoryImage(c.slug, c.image),
+          image: c.image,
           link: `/products?category=${c._id}`,
         }))
       : CURATED_CATEGORIES.map((c) => ({
           name: c.name,
           slug: c.slug,
-          image: getCategoryImage(c.slug),
+          image: CATEGORY_IMAGES[c.slug] ?? CATEGORY_IMAGES.fashion,
           link: c.link,
         }));
 
@@ -72,13 +73,13 @@ export function CategoryGrid({ categories, isLoading }: CategoryGridProps) {
                   index === 0 && 'md:col-span-2 md:row-span-1 md:aspect-[16/10]'
                 )}
               >
-                <img
+                <OptimizedImage
                   src={cat.image}
+                  preset="category"
                   alt={cat.name}
-                  loading={index < 2 ? 'eager' : 'lazy'}
-                  decoding="async"
+                  priority={index < 2}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  onError={onImageError(CATEGORY_IMAGES.fashion)}
+                  fallback={CATEGORY_IMAGES.fashion}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 flex items-end justify-between">

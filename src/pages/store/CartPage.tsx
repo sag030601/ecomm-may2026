@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/stores/cartStore';
 import { formatPrice } from '@/lib/utils';
-import { getProductImage } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { waitForStoreHydration } from '@/lib/storeHydration';
 
 export default function CartPage() {
@@ -56,10 +56,12 @@ export default function CartPage() {
             return (
               <div key={key} className="flex gap-4 border rounded-lg p-4">
                 <Link to={`/products/${item.productId}`} className="shrink-0">
-                  <img
-                    src={getProductImage(item.image)}
+                  <OptimizedImage
+                    src={item.image}
+                    preset="cart"
                     alt={item.name}
                     className="w-24 h-24 md:w-28 md:h-28 object-cover rounded-md bg-muted"
+                    responsive={false}
                   />
                 </Link>
                 <div className="flex-1 min-w-0">

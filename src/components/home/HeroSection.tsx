@@ -4,7 +4,8 @@ import { ChevronLeft, ChevronRight, Shield, Sparkles, Truck } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getHeroImage, HERO_SLIDE_IMAGES, onImageError } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
+import { getHeroImage, HERO_SLIDE_IMAGES } from '@/lib/images';
 import type { Banner } from '@/types';
 
 const FALLBACK_HERO = {
@@ -30,11 +31,15 @@ export function HeroSection({ banners, isLoading, isError }: HeroSectionProps) {
   const slides = banners?.length ? banners : isLoading ? [] : [{ ...FALLBACK_HERO, _id: 'fallback' } as Banner & { _id: string }];
 
   useEffect(() => {
-    slides.forEach((banner, index) => {
+    if (!slides.length) return;
+    const preloadIndexes = [current, (current + 1) % slides.length];
+    preloadIndexes.forEach((index) => {
+      const banner = slides[index];
+      if (!banner) return;
       const img = new Image();
       img.src = getHeroImage(banner.image, index);
     });
-  }, [slides]);
+  }, [slides, current]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -56,7 +61,6 @@ export function HeroSection({ banners, isLoading, isError }: HeroSectionProps) {
     <section className="relative min-h-[75vh] lg:min-h-[88vh] overflow-hidden" aria-label="Hero banner">
       {/* Background slides */}
       {slides.map((banner, index) => {
-        const imageSrc = getHeroImage(banner.image, index);
         return (
           <div
             key={banner._id ?? `slide-${index}`}
@@ -66,14 +70,13 @@ export function HeroSection({ banners, isLoading, isError }: HeroSectionProps) {
             )}
             aria-hidden={index !== current}
           >
-            <img
-              src={imageSrc}
+            <OptimizedImage
+              src={banner.image}
+              preset="hero"
               alt={banner.title || 'Hero banner'}
+              priority={index === 0}
               className="h-full w-full object-cover scale-105"
-              loading="eager"
-              decoding="async"
-              {...(index === 0 ? { fetchPriority: 'high' as const } : {})}
-              onError={onImageError(HERO_SLIDE_IMAGES[index % HERO_SLIDE_IMAGES.length])}
+              fallback={HERO_SLIDE_IMAGES[index % HERO_SLIDE_IMAGES.length]}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/20" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

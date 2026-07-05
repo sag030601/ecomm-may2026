@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getHeroImage, HERO_SLIDE_IMAGES, onImageError } from '@/lib/images';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
+import { HERO_SLIDE_IMAGES } from '@/lib/images';
 
 interface PromoBannerProps {
   title: string;
@@ -13,8 +14,6 @@ interface PromoBannerProps {
 }
 
 export function PromoBanner({ title, subtitle, cta, href, image, reversed }: PromoBannerProps) {
-  const imageSrc = getHeroImage(image, reversed ? 1 : 2);
-
   return (
     <section className="py-8 md:py-12" aria-label={title}>
       <div className="container-custom">
@@ -23,13 +22,12 @@ export function PromoBanner({ title, subtitle, cta, href, image, reversed }: Pro
             reversed ? 'md:flex-row-reverse' : ''
           }`}
         >
-          <img
-            src={imageSrc}
+          <OptimizedImage
+            src={image}
+            preset="hero"
             alt=""
-            loading="lazy"
-            decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
-            onError={onImageError(HERO_SLIDE_IMAGES[0])}
+            fallback={HERO_SLIDE_IMAGES[reversed ? 1 : 2]}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
           <div className="relative z-10 p-8 md:p-14 max-w-xl">
