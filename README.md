@@ -44,12 +44,20 @@ This project is intentionally scoped to demonstrate **production-ready full-stac
 
 ## Screenshots & Demo
 
-| Storefront | Product Detail | Admin Analytics |
-|:--:|:--:|:--:|
-| ![Storefront home](./docs/storefront.png) | ![Product detail](./docs/product-detail.png) | ![Admin dashboard](./docs/admin-dashboard.png) |
-| Hero, categories, featured products | Size/color selection, reviews | Revenue charts, orders, top products |
+<p align="center">
+  <img src="./docs/storefront.png" alt="Storefront homepage with hero banner, categories, and featured products" width="100%" />
+  <br /><em>Storefront — hero, categories, featured products</em>
+</p>
 
-> **Screenshots:** Add PNGs to `./docs/` to render above. The live demo is fully interactive today.
+<p align="center">
+  <img src="./docs/product-detail.png" alt="Product detail page with size and color selection" width="100%" />
+  <br /><em>Product detail — variants, pricing, add to cart</em>
+</p>
+
+<p align="center">
+  <img src="./docs/admin-dashboard.png" alt="Admin dashboard with revenue stats and sales chart" width="100%" />
+  <br /><em>Admin dashboard — revenue, orders, 30-day sales chart</em>
+</p>
 
 <div align="center">
 
@@ -170,7 +178,7 @@ client/
 │   └── pages/
 │       ├── store/              # Customer-facing pages
 │       └── admin/              # Admin dashboard pages
-├── docs/                       # Screenshot assets (add PNGs here)
+├── docs/                       # README screenshots (storefront, product, admin)
 ├── CREDENTIALS.md              # Logins, test cards, env checklist
 ├── .env.example
 └── vite.config.ts              # @ alias + /api proxy
